@@ -53,8 +53,19 @@ jobs:
           source ./versions.env
           echo "POSTGRES_IMAGE=${POSTGRES_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "PG_MAJOR=${PG_MAJOR}" >> "$GITHUB_OUTPUT"
-          # Strip "postgres:" prefix for tags, e.g. 18.2
-          pg_tag="${POSTGRES_IMAGE#postgres:}"
+
+          # Human-facing tags use only the postgres patch version (e.g. 18.4).
+          # Digest pins in POSTGRES_IMAGE (postgres:18.4@sha256:…) are for FROM
+          # reproducibility / rebuild detection — never part of our image tags.
+          ref="${POSTGRES_IMAGE}"
+          ref="${ref#docker.io/library/}"
+          ref="${ref#library/}"
+          ref="${ref#postgres:}"
+          pg_tag="${ref%%@*}"
+          if [[ ! "${pg_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "could not parse postgres version tag from POSTGRES_IMAGE=${POSTGRES_IMAGE}" >&2
+            exit 1
+          fi
           echo "PG_TAG=${pg_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve image names

@@ -56,15 +56,15 @@ volumes:
 | --- | --- |
 | `latest` | Latest build from `main` |
 | `18` | Postgres major |
-| `18.2` | Postgres patch version |
-| `18.2-pgroongaX.Y.Z-pgvectorA.B.C` | Full stack pin (package versions at build time) |
+| `18.4` | Postgres patch version |
+| `18.4-pgroongaX.Y.Z-pgvectorA.B.C` | Full stack pin (package versions at build time) |
 | `sha-<short>` | Git commit |
 | `v*` | Git release tag (when present) |
 
 **Recommended for production:** pin the full composite tag, for example:
 
 ```text
-cubeplex/postgresql-pgroonga-pgvector:18.2-pgroonga4.0.6-pgvector0.8.2
+cubeplex/postgresql-pgroonga-pgvector:18.4-pgroonga4.0.8-pgvector0.8.6
 ```
 
 ---
