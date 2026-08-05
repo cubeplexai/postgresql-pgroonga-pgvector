@@ -80,7 +80,8 @@ docker build \
 2. Resolves the multi-arch **digest**.
 3. If tag or digest differs from [`versions.env`](./versions.env), commits  
    `POSTGRES_IMAGE=postgres:X.Y@sha256:…` **directly to `main`** (no PR).
-4. That push hits `build-push.yml` path filters → full multi-arch publish.
+4. Explicitly dispatches `build-push.yml` (GitHub does **not** start other
+   workflows from a `GITHUB_TOKEN` push — recursion guard).
 
 `PG_MAJOR` is **not** auto-advanced (major upgrades stay manual).
 

@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   bump:
@@ -39,6 +40,7 @@ jobs:
           ./scripts/check-and-bump-postgres.sh
 
       - name: Commit and push
+        id: push
         if: steps.bump.outputs.changed == 'true'
         env:
           NEW_TAG: ${{ steps.bump.outputs.latest_tag }}
@@ -52,6 +54,7 @@ jobs:
           git add versions.env
           if git diff --cached --quiet; then
             echo "nothing to commit"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -59,10 +62,13 @@ jobs:
             -m "${PREV_IMAGE} -> ${NEW_IMAGE}" \
             -m "Auto-detected by check-upstream workflow (no PR)."
 
-          # Rebase if another commit landed; then push to trigger build-push.
+          # NOTE: commits made with GITHUB_TOKEN do NOT trigger other workflows
+          # (GitHub recursion guard). We push the pin, then explicitly dispatch
+          # build-push below.
           for attempt in 1 2 3; do
             if git push origin HEAD:main; then
               echo "pushed bump for ${NEW_TAG}"
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "push failed (attempt ${attempt}), rebasing..."
@@ -70,6 +76,20 @@ jobs:
           done
           echo "failed to push after retries" >&2
           exit 1
+
+      - name: Dispatch image build
+        if: steps.bump.outputs.changed == 'true' && steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Explicit dispatch — push with GITHUB_TOKEN alone would not start build-push.
+          gh workflow run build-push.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f push=true \
+            -f platforms=linux/amd64,linux/arm64
+          echo "dispatched build-push.yml"
 
       - name: Summary
         if: always()
@@ -80,6 +100,7 @@ jobs:
           | Field | Value |
           | --- | --- |
           | Changed | \`${{ steps.bump.outputs.changed }}\` |
+          | Pushed | \`${{ steps.push.outputs.pushed }}\` |
           | Latest tag | \`${{ steps.bump.outputs.latest_tag }}\` |
           | New image | \`${{ steps.bump.outputs.new_image }}\` |
           | Previous | \`${{ steps.bump.outputs.previous_image }}\` |
