@@ -76,7 +76,16 @@ docker build \
 
 | Secret | Purpose |
 | --- | --- |
-| `DOCKERHUB_TOKEN` | Docker Hub access token (read/write). Org-level secret is fine for public repos. |
+| `DOCKERHUB_TOKEN` | Docker Hub [access token](https://docs.docker.com/docker-hub/access-tokens/). Org-level secret is fine for public repos. |
+
+Token scopes:
+
+| Scope | Image push | Hub README / short description |
+| --- | --- | --- |
+| Read & Write | yes | no (API returns **403 Forbidden**) |
+| **Read, Write, Delete** | yes | **yes** |
+
+If description sync fails with `Forbidden`, recreate the PAT with **Read, Write, Delete**, update org secret `DOCKERHUB_TOKEN`, then re-run **Update Docker Hub README**.
 
 GHCR uses the built-in `GITHUB_TOKEN` (`packages: write`).
 
@@ -86,6 +95,10 @@ GHCR uses the built-in `GITHUB_TOKEN` (`packages: write`).
 | --- | --- | --- |
 | `DOCKERHUB_USERNAME` (var or secret) | `cubeplex` | Docker Hub login username (not the GitHub org `cubeplexai`) |
 | `DOCKERHUB_NAMESPACE` (var) | `cubeplex` | Docker Hub image namespace |
+
+### Docker Hub README source
+
+[`docker-hub-readme.md`](./docker-hub-readme.md) is synced to [hub.docker.com/r/cubeplex/postgresql-pgroonga-pgvector](https://hub.docker.com/r/cubeplex/postgresql-pgroonga-pgvector) by [`.github/workflows/dockerhub-readme.yml`](./.github/workflows/dockerhub-readme.yml).
 
 ## Bumping the stack
 

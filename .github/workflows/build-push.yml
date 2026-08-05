@@ -205,9 +205,11 @@ jobs:
 
       - name: Update Docker Hub README
         if: steps.publish.outputs.publish == 'true'
-        uses: peter-evans/dockerhub-description@v4
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME || env.DOCKERHUB_USER }}
+          # Needs Docker Hub PAT with Read/Write/Delete (push-only tokens return 403).
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.DOCKERHUB_USER }}/${{ env.IMAGE_NAME }}
           short-description: PostgreSQL with PGroonga full-text search and pgvector
