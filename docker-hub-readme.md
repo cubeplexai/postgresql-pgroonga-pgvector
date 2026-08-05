@@ -8,6 +8,13 @@ Built from the official [`postgres`](https://hub.docker.com/_/postgres) image us
 
 Also published on GHCR: `ghcr.io/cubeplexai/postgresql-pgroonga-pgvector`
 
+### From CubePlex
+
+| Project | One-liner | Links |
+| --- | --- | --- |
+| **[CubePlex](https://cubeplex.ai)** | AI agent workspace for teams — collaborate with agents that use tools, sandboxes, and shared context. | [Website](https://cubeplex.ai) · [GitHub](https://github.com/cubeplexai/cubeplex) |
+| **[CubePi](https://cubepi.ai)** | Async-first Python agent kernel (inspired by Pi) for coding agents, tools, and continuous sessions. | [Website](https://cubepi.ai) · [GitHub](https://github.com/cubeplexai/cubepi) |
+
 ---
 
 ## Quick start
