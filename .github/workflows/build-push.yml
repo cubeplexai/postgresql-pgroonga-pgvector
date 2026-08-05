@@ -1,0 +1,218 @@
+name: Build and push image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "Dockerfile"
+      - "versions.env"
+      - ".github/workflows/build-push.yml"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "versions.env"
+      - ".github/workflows/build-push.yml"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Push multi-arch image to GHCR and Docker Hub
+        type: boolean
+        default: true
+      platforms:
+        description: Target platforms (comma-separated)
+        type: string
+        default: linux/amd64,linux/arm64
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: postgresql-pgroonga-pgvector
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load versions.env
+        id: versions
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source ./versions.env
+          echo "POSTGRES_IMAGE=${POSTGRES_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "PG_MAJOR=${PG_MAJOR}" >> "$GITHUB_OUTPUT"
+          # Strip "postgres:" prefix for tags, e.g. 18.2
+          pg_tag="${POSTGRES_IMAGE#postgres:}"
+          echo "PG_TAG=${pg_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve image names
+        id: images
+        run: |
+          set -euo pipefail
+          owner="${{ github.repository_owner }}"
+          # Optional override for Docker Hub org/user (repo variable DOCKERHUB_NAMESPACE).
+          hub_ns="${{ vars.DOCKERHUB_NAMESPACE }}"
+          if [[ -z "${hub_ns}" ]]; then
+            hub_ns="${owner}"
+          fi
+          echo "ghcr=ghcr.io/${owner}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "dockerhub=docker.io/${hub_ns}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Decide whether to publish
+        id: publish
+        run: |
+          set -euo pipefail
+          publish=false
+          event="${{ github.event_name }}"
+          ref="${{ github.ref }}"
+          if [[ "${event}" == "push" && "${ref}" == "refs/heads/main" ]]; then
+            publish=true
+          elif [[ "${event}" == "push" && "${ref}" == refs/tags/* ]]; then
+            publish=true
+          elif [[ "${event}" == "workflow_dispatch" && "${{ inputs.push }}" == "true" ]]; then
+            publish=true
+          fi
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        if: steps.publish.outputs.publish == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: steps.publish.outputs.publish == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve platforms
+        id: platforms
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Faster PR feedback; full multi-arch on main/tags/dispatch.
+            echo "list=linux/amd64" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "list=${{ inputs.platforms }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "list=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Single-arch local load so we can inspect installed extension versions
+      # and derive composite tags (e.g. 18.2-pgroonga4.0.6-pgvector0.8.2).
+      - name: Build (amd64, load) for version discovery
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          push: false
+          platforms: linux/amd64
+          tags: local/${{ env.IMAGE_NAME }}:probe
+          build-args: |
+            POSTGRES_IMAGE=${{ steps.versions.outputs.POSTGRES_IMAGE }}
+            PG_MAJOR=${{ steps.versions.outputs.PG_MAJOR }}
+          cache-from: type=gha,scope=${{ env.IMAGE_NAME }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE_NAME }}
+
+      - name: Discover extension package versions
+        id: ext
+        run: |
+          set -euo pipefail
+          PG_MAJOR="${{ steps.versions.outputs.PG_MAJOR }}"
+          PG_TAG="${{ steps.versions.outputs.PG_TAG }}"
+
+          pgroonga_ver=$(docker run --rm "local/${IMAGE_NAME}:probe" \
+            bash -c "dpkg-query -W -f='\${Version}' postgresql-${PG_MAJOR}-pgdg-pgroonga" \
+            | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          pgvector_ver=$(docker run --rm "local/${IMAGE_NAME}:probe" \
+            bash -c "dpkg-query -W -f='\${Version}' postgresql-${PG_MAJOR}-pgvector" \
+            | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+          if [[ -z "${pgroonga_ver}" || -z "${pgvector_ver}" ]]; then
+            echo "Failed to discover extension versions" >&2
+            docker run --rm "local/${IMAGE_NAME}:probe" dpkg -l 'postgresql-*' || true
+            exit 1
+          fi
+
+          echo "pgroonga=${pgroonga_ver}" >> "$GITHUB_OUTPUT"
+          echo "pgvector=${pgvector_ver}" >> "$GITHUB_OUTPUT"
+
+          full_tag="${PG_TAG}-pgroonga${pgroonga_ver}-pgvector${pgvector_ver}"
+          echo "full_tag=${full_tag}" >> "$GITHUB_OUTPUT"
+          echo "Discovered tag: ${full_tag}"
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.images.outputs.ghcr }}
+            ${{ steps.images.outputs.dockerhub }}
+          tags: |
+            type=raw,value=${{ steps.ext.outputs.full_tag }}
+            type=raw,value=${{ steps.versions.outputs.PG_TAG }}
+            type=raw,value=${{ steps.versions.outputs.PG_MAJOR }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+            type=sha,prefix=sha-,format=short
+            type=ref,event=tag
+
+      - name: Build and push multi-arch image
+        if: steps.publish.outputs.publish == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ steps.platforms.outputs.list }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.title=postgresql-pgroonga-pgvector
+            org.opencontainers.image.description=PostgreSQL ${{ steps.versions.outputs.PG_TAG }} with PGroonga ${{ steps.ext.outputs.pgroonga }} and pgvector ${{ steps.ext.outputs.pgvector }}
+          build-args: |
+            POSTGRES_IMAGE=${{ steps.versions.outputs.POSTGRES_IMAGE }}
+            PG_MAJOR=${{ steps.versions.outputs.PG_MAJOR }}
+          cache-from: type=gha,scope=${{ env.IMAGE_NAME }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE_NAME }}
+          provenance: false
+
+      - name: Summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Image build
+
+          | Field | Value |
+          | --- | --- |
+          | Postgres | \`${{ steps.versions.outputs.POSTGRES_IMAGE }}\` |
+          | PGroonga | \`${{ steps.ext.outputs.pgroonga }}\` |
+          | pgvector | \`${{ steps.ext.outputs.pgvector }}\` |
+          | Full tag | \`${{ steps.ext.outputs.full_tag }}\` |
+          | Platforms | \`${{ steps.platforms.outputs.list }}\` |
+          | Publish | \`${{ steps.publish.outputs.publish }}\` |
+          | GHCR | \`${{ steps.images.outputs.ghcr }}\` |
+          | Docker Hub | \`${{ steps.images.outputs.dockerhub }}\` |
+          EOF

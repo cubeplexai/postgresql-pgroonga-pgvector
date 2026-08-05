@@ -1,0 +1,20 @@
+services:
+  postgresql:
+    image: ghcr.io/cubeplexai/postgresql-pgroonga-pgvector:latest
+    # Also available on Docker Hub:
+    # image: cubeplexai/postgresql-pgroonga-pgvector:latest
+    container_name: postgresql-pgroonga-pgvector
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
