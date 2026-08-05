@@ -74,16 +74,16 @@ docker build \
 
 | Secret | Purpose |
 | --- | --- |
-| `DOCKERHUB_USERNAME` | Docker Hub username |
-| `DOCKERHUB_TOKEN` | Docker Hub access token (read/write) |
+| `DOCKERHUB_TOKEN` | Docker Hub access token (read/write). Org-level secret is fine for public repos. |
 
 GHCR uses the built-in `GITHUB_TOKEN` (`packages: write`).
 
-### Optional repository variable
+### Optional variables / secrets
 
-| Variable | Default | Purpose |
+| Name | Default | Purpose |
 | --- | --- | --- |
-| `DOCKERHUB_NAMESPACE` | `github.repository_owner` (`cubeplexai`) | Docker Hub org/user namespace |
+| `DOCKERHUB_USERNAME` (var or secret) | `github.repository_owner` (`cubeplexai`) | Docker Hub login username (account that owns the token) |
+| `DOCKERHUB_NAMESPACE` (var) | `github.repository_owner` (`cubeplexai`) | Docker Hub image namespace |
 
 ## Bumping the stack
 
