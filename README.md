@@ -18,16 +18,17 @@ Docker Hub full description is maintained in [`docker-hub-readme.md`](./docker-h
 | Tag | Meaning |
 | --- | --- |
 | `latest` | Latest build from `main` |
-| `18.2` | Postgres patch version from [`versions.env`](./versions.env) |
+| `18.4` | Postgres patch version (digest pin in `versions.env` is **not** part of the tag) |
 | `18` | Postgres major |
-| `18.2-pgroongaX.Y.Z-pgvectorA.B.C` | Full stack pin (discovered at build time from packages) |
+| `18.4-pgroongaX.Y.Z-pgvectorA.B.C` | Full stack pin (extension package versions at build time) |
 | `sha-<short>` | Git commit |
 | `v*` | Git tag (when present) |
 
 Example:
 
 ```text
-ghcr.io/cubeplexai/postgresql-pgroonga-pgvector:18.2-pgroonga4.0.6-pgvector0.8.2
+cubeplex/postgresql-pgroonga-pgvector:18.4
+cubeplex/postgresql-pgroonga-pgvector:18.4-pgroonga4.0.8-pgvector0.8.6
 ```
 
 ## Quick start
