@@ -1,0 +1,38 @@
+name: Update Docker Hub README
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker-hub-readme.md"
+      - ".github/workflows/dockerhub-readme.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-readme
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: postgresql-pgroonga-pgvector
+  DOCKERHUB_USER: cubeplex
+
+jobs:
+  dockerhub-readme:
+    name: Sync README to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME || env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_USER }}/${{ env.IMAGE_NAME }}
+          short-description: PostgreSQL with PGroonga full-text search and pgvector
+          readme-filepath: ./docker-hub-readme.md
+          enable-url-completion: true

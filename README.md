@@ -9,7 +9,9 @@ Built from the official [`postgres`](https://hub.docker.com/_/postgres) image an
 | Registry | Image |
 | --- | --- |
 | GHCR | `ghcr.io/cubeplexai/postgresql-pgroonga-pgvector` |
-| Docker Hub | `cubeplex/postgresql-pgroonga-pgvector` |
+| Docker Hub | [`cubeplex/postgresql-pgroonga-pgvector`](https://hub.docker.com/r/cubeplex/postgresql-pgroonga-pgvector) |
+
+Docker Hub full description is maintained in [`docker-hub-readme.md`](./docker-hub-readme.md) and synced by CI.
 
 ### Tags
 

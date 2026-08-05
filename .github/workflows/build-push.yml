@@ -203,6 +203,17 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ env.IMAGE_NAME }}
           provenance: false
 
+      - name: Update Docker Hub README
+        if: steps.publish.outputs.publish == 'true'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME || env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_USER }}/${{ env.IMAGE_NAME }}
+          short-description: PostgreSQL with PGroonga full-text search and pgvector
+          readme-filepath: ./docker-hub-readme.md
+          enable-url-completion: true
+
       - name: Summary
         if: always()
         run: |
