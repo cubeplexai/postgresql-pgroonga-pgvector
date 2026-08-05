@@ -72,6 +72,23 @@ docker build \
 | Tag `v*` | Multi-arch build + push |
 | `workflow_dispatch` | Optional push; platforms configurable |
 
+### Auto-bump official Postgres base
+
+[`.github/workflows/check-upstream.yml`](./.github/workflows/check-upstream.yml) runs **daily** (and on demand):
+
+1. Looks up the latest official `postgres:<PG_MAJOR>.N` tag (Docker Hub, with fallback to [docker-library/official-images](https://github.com/docker-library/official-images)).
+2. Resolves the multi-arch **digest**.
+3. If tag or digest differs from [`versions.env`](./versions.env), commits  
+   `POSTGRES_IMAGE=postgres:X.Y@sha256:…` **directly to `main`** (no PR).
+4. That push hits `build-push.yml` path filters → full multi-arch publish.
+
+`PG_MAJOR` is **not** auto-advanced (major upgrades stay manual).
+
+```bash
+# Manual run
+gh workflow run check-upstream.yml -R cubeplexai/postgresql-pgroonga-pgvector
+```
+
 ### Required secrets (org or repo)
 
 | Secret | Purpose |
@@ -102,9 +119,13 @@ GHCR uses the built-in `GITHUB_TOKEN` (`packages: write`).
 
 ## Bumping the stack
 
-1. Edit [`versions.env`](./versions.env) (`POSTGRES_IMAGE`, `PG_MAJOR`).
-2. Merge to `main` (or run **Build and push image** manually).
-3. CI installs current PGroonga/pgvector packages, discovers their versions, and publishes the composite tag.
+**Patch releases (automatic):** leave it to **Check upstream Postgres** — or run that workflow manually.
+
+**Major line (manual):**
+
+1. Edit [`versions.env`](./versions.env): set `PG_MAJOR` and `POSTGRES_IMAGE` (e.g. `postgres:19.0`).
+2. Push to `main` (or run **Build and push image**).
+3. CI installs current PGroonga/pgvector packages, discovers versions, and publishes the composite tag.
 
 ## License
 
