@@ -34,6 +34,8 @@ permissions:
 
 env:
   IMAGE_NAME: postgresql-pgroonga-pgvector
+  # Docker Hub account/namespace (GitHub org is cubeplexai; Hub is cubeplex).
+  DOCKERHUB_USER: cubeplex
 
 jobs:
   build:
@@ -60,10 +62,10 @@ jobs:
         run: |
           set -euo pipefail
           owner="${{ github.repository_owner }}"
-          # Optional override for Docker Hub org/user (repo variable DOCKERHUB_NAMESPACE).
+          # Optional override for Docker Hub namespace (repo variable DOCKERHUB_NAMESPACE).
           hub_ns="${{ vars.DOCKERHUB_NAMESPACE }}"
           if [[ -z "${hub_ns}" ]]; then
-            hub_ns="${owner}"
+            hub_ns="${DOCKERHUB_USER}"
           fi
           echo "ghcr=ghcr.io/${owner}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
           echo "dockerhub=docker.io/${hub_ns}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
@@ -104,9 +106,9 @@ jobs:
         if: steps.publish.outputs.publish == 'true'
         uses: docker/login-action@v3
         with:
-          # Username can be org/repo var or secret; defaults to GitHub org (cubeplexai).
-          # Token is expected as org secret DOCKERHUB_TOKEN (available to public repos).
-          username: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME || github.repository_owner }}
+          # Docker Hub login is "cubeplex" (not the GitHub org cubeplexai).
+          # Token: org secret DOCKERHUB_TOKEN (available to public repos).
+          username: ${{ vars.DOCKERHUB_USERNAME || secrets.DOCKERHUB_USERNAME || env.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Resolve platforms

@@ -2,7 +2,7 @@ services:
   postgresql:
     image: ghcr.io/cubeplexai/postgresql-pgroonga-pgvector:latest
     # Also available on Docker Hub:
-    # image: cubeplexai/postgresql-pgroonga-pgvector:latest
+    # image: cubeplex/postgresql-pgroonga-pgvector:latest
     container_name: postgresql-pgroonga-pgvector
     restart: unless-stopped
     ports:

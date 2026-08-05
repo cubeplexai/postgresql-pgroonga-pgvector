@@ -9,7 +9,7 @@ Built from the official [`postgres`](https://hub.docker.com/_/postgres) image an
 | Registry | Image |
 | --- | --- |
 | GHCR | `ghcr.io/cubeplexai/postgresql-pgroonga-pgvector` |
-| Docker Hub | `cubeplexai/postgresql-pgroonga-pgvector` |
+| Docker Hub | `cubeplex/postgresql-pgroonga-pgvector` |
 
 ### Tags
 
@@ -82,8 +82,8 @@ GHCR uses the built-in `GITHUB_TOKEN` (`packages: write`).
 
 | Name | Default | Purpose |
 | --- | --- | --- |
-| `DOCKERHUB_USERNAME` (var or secret) | `github.repository_owner` (`cubeplexai`) | Docker Hub login username (account that owns the token) |
-| `DOCKERHUB_NAMESPACE` (var) | `github.repository_owner` (`cubeplexai`) | Docker Hub image namespace |
+| `DOCKERHUB_USERNAME` (var or secret) | `cubeplex` | Docker Hub login username (not the GitHub org `cubeplexai`) |
+| `DOCKERHUB_NAMESPACE` (var) | `cubeplex` | Docker Hub image namespace |
 
 ## Bumping the stack
 
